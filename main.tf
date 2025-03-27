@@ -3,18 +3,26 @@ data "aws_s3_bucket" "origin_bucket" {
   bucket = var.s3_bucket_name
 }
 
-resource "aws_cloudfront_origin_access_identity" "origin_access_identity" {
-  comment = "OAI for ${var.s3_bucket_name}"
+# resource "aws_cloudfront_origin_access_identity" "origin_access_identity" {
+#   comment = "OAI for ${var.s3_bucket_name}"
+# }
+
+# Create Origin Access Control
+resource "aws_cloudfront_origin_access_control" "s3_oac" {
+  name                              = "OAC for ${var.s3_bucket_name}"
+  description                       = "Origin Access Control for S3 bucket ${var.s3_bucket_name}"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
+
 
 resource "aws_cloudfront_distribution" "s3_distribution" {
   origin {
-    domain_name = data.aws_s3_bucket.origin_bucket.bucket_regional_domain_name
-    origin_id   = "S3-${var.s3_bucket_name}"
+    domain_name              = data.aws_s3_bucket.origin_bucket.bucket_regional_domain_name
+    origin_id                = "S3-${var.s3_bucket_name}"
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
 
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.origin_access_identity.cloudfront_access_identity_path
-    }
   }
 
   aliases = var.aliases
@@ -80,11 +88,17 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = "s3:GetObject"
-        Effect   = "Allow"
-        Resource = "${data.aws_s3_bucket.origin_bucket.arn}/*"
+        Sid    = "AllowCloudFrontServicePrincipal"
+        Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${aws_cloudfront_origin_access_identity.origin_access_identity.id}"
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${data.aws_s3_bucket.origin_bucket.arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.s3_distribution.arn
+          }
         }
       }
     ]
