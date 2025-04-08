@@ -13,10 +13,10 @@ output "cloudfront_distribution_domain_name" {
   value       = aws_cloudfront_distribution.s3_distribution.domain_name
 }
 
-output "origin_access_identity_path" {
-  description = "Path of the CloudFront origin access identity"
-  value       = aws_cloudfront_origin_access_identity.origin_access_identity.cloudfront_access_identity_path
-}
+# output "origin_access_identity_path" {
+#   description = "Path of the CloudFront origin access identity"
+#   value       = aws_cloudfront_origin_access_identity.origin_access_identity.cloudfront_access_identity_path
+# }
 
 output "s3_bucket_id" {
   description = "ID of the S3 bucket used as origin"
